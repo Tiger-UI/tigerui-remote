@@ -42,8 +42,6 @@ import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.core.IMap;
 
 import tigerui.Subscriber;
-import tigerui.remote.HazelcastPropertyService;
-import tigerui.remote.RemoteProperty;
 import tigerui.subscription.Subscription;
 
 public class TestHazelcastPropertyService {
@@ -151,7 +149,7 @@ public class TestHazelcastPropertyService {
     }
     
     @Test
-    public void testGetProperty() throws Exception {
+    public void testGetProperty() throws Throwable {
         Consumer<String> onChanged = mock(Consumer.class);
         Runnable onDisposed = mock(Runnable.class);
         
@@ -206,7 +204,7 @@ public class TestHazelcastPropertyService {
     }
     
     @Test
-    public void testShutdownHazelcastDisposesRemoteProperty() {
+    public void testShutdownHazelcastDisposesRemoteProperty() throws Throwable {
         EDT_TEST_HELPER.runTest(() -> {
             RemoteProperty<String> property = service.getProperty(ID);
             Runnable onDisposedAction = mock(Runnable.class);
