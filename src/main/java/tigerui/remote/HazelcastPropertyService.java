@@ -17,6 +17,8 @@ import static java.util.Objects.requireNonNull;
 import static tigerui.Preconditions.checkArgument;
 import static tigerui.Preconditions.checkState;
 
+import java.util.Map.Entry;
+import java.util.Objects;
 import java.util.Set;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
@@ -26,8 +28,11 @@ import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.core.IMap;
 import com.hazelcast.core.LifecycleEvent.LifecycleState;
 import com.hazelcast.core.LifecycleService;
+import com.hazelcast.map.AbstractEntryProcessor;
 import com.hazelcast.map.listener.EntryUpdatedListener;
 
+import rx.Single;
+import rx.subjects.AsyncSubject;
 import tigerui.Subscriber;
 import tigerui.subscription.CompositeSubscription;
 
@@ -55,8 +60,8 @@ public class HazelcastPropertyService implements PropertyService {
 
     @Override
     public <T> T getValue(PropertyId<T> id) {
-        checkPropertyExists(id);
         checkHazelcastIsRunning();
+        checkPropertyExists(id);
         
         @SuppressWarnings("unchecked") // this should not throw, since the property id guarantees the type
         T value = (T) propertyMap.get(id.getUuid());
@@ -66,16 +71,51 @@ public class HazelcastPropertyService implements PropertyService {
 
     @Override
     public <T> void setValue(PropertyId<T> id, T value) {
-        checkPropertyExists(id);
         checkHazelcastIsRunning();
+        checkPropertyExists(id);
         
         propertyMap.set(id.getUuid(), value);
+    }
+    
+    @Override
+    public <T> T replaceValue(PropertyId<T> id, T value) {
+    	checkHazelcastIsRunning();
+        checkPropertyExists(id);
+        
+    	return (T) propertyMap.replace(id.getUuid(), value);
+    }
+    
+    @Override
+    public <T> Single<Void> setValueAsync(PropertyId<T> id, T newValue, T expectedRemoteValue) {
+        checkHazelcastIsRunning();
+        checkPropertyExists(id);
+        
+        AsyncSubject<Void> result = AsyncSubject.create();
+        
+        propertyMap.submitToKey(id.getUuid(), new AbstractEntryProcessor<String, T>() {
+            @Override
+            public Object process(Entry<String, T> entry) {
+            	T oldValue = entry.getValue();
+            	
+            	if(Objects.equals(expectedRemoteValue, oldValue)) {            		
+            		entry.setValue(newValue);
+            		result.onNext(null);
+            		result.onCompleted();
+            	} else {
+            		result.onError(new SetFailedException(newValue, expectedRemoteValue, oldValue));
+            	}
+            	
+                return oldValue;
+            }
+        });
+        
+        return result.toSingle();
     }
 
     @Override
     public <T> void registerProperty(PropertyId<T> id, T initialValue) {
-        checkPropertyDoesNotExists(id);
         checkHazelcastIsRunning();
+        checkPropertyDoesNotExists(id);
         
         propertyMap.put(id.getUuid(), initialValue);
     }
@@ -96,8 +136,8 @@ public class HazelcastPropertyService implements PropertyService {
 
     @Override
     public <T> Subscriber registerListener(PropertyId<T> id, Consumer<T> listener) {
-        checkPropertyExists(id);
         checkHazelcastIsRunning();
+        checkPropertyExists(id);
         
         String registrationId = propertyMap.addEntryListener(createEntryUpdatedListener(listener), id.getUuid(), true);
         
@@ -114,6 +154,30 @@ public class HazelcastPropertyService implements PropertyService {
         checkHazelcastIsRunning();
         
         return RemoteProperty.createRemoteProperty(this, id);
+    }
+    
+    @Override
+    public void lock(PropertyId<?> id) {
+        checkHazelcastIsRunning();
+        checkPropertyExists(id);
+        
+        propertyMap.lock(id.getUuid());
+    }
+    
+    @Override
+    public void unlock(PropertyId<?> id) {
+        checkHazelcastIsRunning();
+        checkPropertyExists(id);
+        
+        propertyMap.unlock(id.getUuid());
+    }
+
+    @Override
+    public boolean isLocked(PropertyId<?> id) {
+        checkHazelcastIsRunning();
+        checkPropertyExists(id);
+        
+        return propertyMap.isLocked(id.getUuid());
     }
 
     private <T> void checkPropertyExists(PropertyId<T> id) {
