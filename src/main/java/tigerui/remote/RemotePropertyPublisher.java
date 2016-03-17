@@ -18,7 +18,6 @@ import static tigerui.Preconditions.checkState;
 
 import tigerui.EventLoop;
 import tigerui.Subscriber;
-import tigerui.dispatcher.Dispatcher;
 import tigerui.dispatcher.PropertyDispatcher;
 import tigerui.disposables.Disposable;
 import tigerui.property.PropertyObserver;
@@ -41,9 +40,9 @@ public class RemotePropertyPublisher<T> implements PropertyPublisher<T>, Disposa
     private final EventLoop eventLoop;
     private T value; // always accessed on the EDT does not need to be volatile
     
-    public RemotePropertyPublisher(PropertyService propertyService, PropertyId<T> id) {
+    public RemotePropertyPublisher(PropertyService propertyService, PropertyDispatcher<T> dispatcher, PropertyId<T> id) {
         this.id = requireNonNull(id);
-        this.dispatcher = Dispatcher.createPropertyDispatcher();
+        this.dispatcher = dispatcher;
         this.eventLoop = EventLoop.createEventLoop();
         this.value = requireNonNull(propertyService.getValue(id));
         this.subscriber = propertyService.registerListener(id, this::updateValue);

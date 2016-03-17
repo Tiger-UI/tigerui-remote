@@ -13,24 +13,23 @@
  */
 package tigerui.remote;
 
-import static java.time.Duration.ofMillis;
-import static java.time.Duration.ofSeconds;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static tigerui.ThreadedTestHelper.EDT_TEST_HELPER;
-import static tigerui.ThreadedTestHelper.createOnEDT;
-import static tigerui.ThreadedTestHelper.waitForConditionOnEDT;
 
 import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutionException;
 import java.util.function.Consumer;
 
 import org.junit.After;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Mockito;
@@ -41,6 +40,7 @@ import com.hazelcast.core.Hazelcast;
 import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.core.IMap;
 
+import rx.Single;
 import tigerui.Subscriber;
 import tigerui.subscription.Subscription;
 
@@ -148,45 +148,7 @@ public class TestHazelcastPropertyService {
         verifyNoMoreInteractions(consumer);
     }
     
-    @Test
-    public void testGetProperty() throws Throwable {
-        Consumer<String> onChanged = mock(Consumer.class);
-        Runnable onDisposed = mock(Runnable.class);
-        
-        RemoteProperty<String> remoteProperty = createOnEDT(() -> service.getProperty(ID));
-
-        EDT_TEST_HELPER.runTest(() -> {            
-            assertEquals("tacos", remoteProperty.get());
-            
-            remoteProperty.observe(onChanged, onDisposed);
-            
-            verify(onChanged).accept("tacos");
-            verifyNoMoreInteractions(onDisposed);
-            
-            IMap<Object, Object> properties = hazelcast.getMap("Property");
-            properties.set(ID.getUuid(), "burritos");
-            
-            assertEquals(ID, remoteProperty.getId());
-        });
-        
-        waitForConditionOnEDT(remoteProperty::get, value -> value.equals("burritos"), ofSeconds(10), ofMillis(100));
-        
-        EDT_TEST_HELPER.runTest(() -> {
-            verify(onChanged).accept("burritos");
-            
-            Consumer<Integer> onChanged2 = mock(Consumer.class);
-            remoteProperty.map(String::length).take(1).onChanged(onChanged2);
-            
-            verify(onChanged2).accept(8);
-            
-            remoteProperty.dispose();
-            verify(onDisposed).run();
-            
-            Runnable onDisposedAction = Mockito.mock(Runnable.class);
-            remoteProperty.onDisposed(onDisposedAction);
-            verify(onDisposedAction).run();
-        });
-    }
+    
     
     @Test
     public void testShutdownHazelcastDisposesSubscriber() {
@@ -216,4 +178,69 @@ public class TestHazelcastPropertyService {
             assertEquals("tacos", property.get());
         });
     }
+    
+    @Test
+    public void testLockUnlock() {
+        assertFalse(service.isLocked(ID));
+
+        // lock once
+        service.lock(ID);
+        assertTrue(service.isLocked(ID));
+        
+        // lock twice
+        service.lock(ID);
+        assertTrue(service.isLocked(ID));
+        
+        // unlocking once should not release the lock
+        service.unlock(ID);
+        assertTrue(service.isLocked(ID));
+        
+        // unlocking a second time should release the lock
+        service.unlock(ID);
+        assertFalse(service.isLocked(ID));
+    }
+    
+    @Test(expected = IllegalArgumentException.class)
+    public void testCallLockForNonExistentPropertyThrows() {
+        service.lock(new PropertyId<>("skljdlkajsd"));
+    }
+    
+    @Test(expected = IllegalArgumentException.class)
+    public void testCallUnLockForNonExistentPropertyThrows() {
+        service.unlock(new PropertyId<>("skljdlkajsd"));
+    }
+    
+    @Test(expected = IllegalArgumentException.class)
+    public void testCallIsLockedForNonExistentPropertyThrows() {
+        service.isLocked(new PropertyId<>("skljdlkajsd"));
+    }
+    
+    @Test
+	public void testSetValueAsync() throws InterruptedException, ExecutionException {
+		Single<Void> result = service.setValueAsync(ID, "burritos", "tacos");
+		
+		result.toBlocking().value();
+		
+		assertEquals("burritos", service.getValue(ID));
+	}
+    
+    @Test
+	public void testSetValueAsyncFails() throws Exception {
+		Single<Void> result = service.setValueAsync(ID, "burritos", "fajitas");
+		
+		try {			
+			result.toBlocking().value();
+			fail("The setValueAsync call should have failed.");
+		} catch ( RuntimeException exception ) {
+			Throwable throwable = exception.getCause();
+			
+			assertEquals(SetFailedException.class, throwable.getClass());
+			
+			SetFailedException setFailedException = (SetFailedException) throwable;
+			
+			assertEquals("tacos", setFailedException.getActualRemoteValue());
+			assertEquals("fajitas", setFailedException.getExpectedRemoteValue());
+			assertEquals("burritos", setFailedException.getNewRemoteValue());
+		}
+	}
 }
