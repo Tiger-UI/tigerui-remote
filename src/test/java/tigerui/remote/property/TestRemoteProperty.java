@@ -1,8 +1,11 @@
-package tigerui.remote;
+package tigerui.remote.property;
 
 import static java.time.Duration.ofMillis;
 import static java.time.Duration.ofSeconds;
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
@@ -13,7 +16,10 @@ import static tigerui.ThreadedTestHelper.createOnEDT;
 import static tigerui.ThreadedTestHelper.waitForConditionOnEDT;
 
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
+
+import javax.swing.SwingUtilities;
 
 import org.junit.After;
 import org.junit.Before;
@@ -48,8 +54,8 @@ public class TestRemoteProperty {
         joinConfig.getAwsConfig().setEnabled(false);
         
         hazelcast = Hazelcast.newHazelcastInstance(config);
-        service = new HazelcastPropertyService(hazelcast);
-        service.registerProperty(ID, "tacos");
+        service = ThreadedTestHelper.createOnEDT(() -> new HazelcastPropertyService(hazelcast));
+        SwingUtilities.invokeAndWait(() -> service.registerProperty(ID, "tacos"));
         remoteProperty = createOnEDT(() -> service.getProperty(ID));
     }
     
@@ -205,22 +211,24 @@ public class TestRemoteProperty {
 		CountDownLatch waitForSet = new CountDownLatch(1);
 		CountDownLatch waitForSetAsync = new CountDownLatch(1);
 		
-		Single<Void> setResult = createOnEDT(() -> {
+		AtomicReference<Single<Void>> singleRef = new AtomicReference<>();
+		
+		SwingUtilities.invokeLater(() -> {
 			assertTrue(awaitLatch(waitForSet));
 			try {				
-				return remoteProperty.setValueAsync("burritos");
+				singleRef.set(remoteProperty.setValueAsync("burritos"));
 			} finally {
 				waitForSetAsync.countDown();
 			}
 		});
 		
-		service.setValue(ID, "fajitas");
+		hazelcast.getMap("Property").set(ID.getUuid(), "fajitas");
 		waitForSet.countDown();
 		waitForSetAsync.await();
 
 		// wait for the set to finish
 		try {			
-			setResult.toBlocking().value();
+			singleRef.get().toBlocking().value();
 			fail();
 		} catch ( RuntimeException exception ) {
 			throw exception.getCause();
@@ -249,7 +257,7 @@ public class TestRemoteProperty {
 			assertFalse(remoteProperty.isLocked());
 		});
 		
-		service.lock(ID);
+		EDT_TEST_HELPER.runTest(() -> service.lock(ID));
 		
 		EDT_TEST_HELPER.runTest(() ->assertTrue(remoteProperty.isLocked()));
 	}

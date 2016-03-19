@@ -1,4 +1,4 @@
-package tigerui.remote;
+package tigerui.remote.property;
 
 /**
  * Indicates that an attempt to set the value of a remote property failed.

@@ -11,11 +11,12 @@
  * or implied. See the License for the specific language governing permissions and limitations under
  * the License.
  */
-package tigerui.remote;
+package tigerui.remote.property;
 
 import static java.util.Objects.requireNonNull;
 import static tigerui.Preconditions.checkArgument;
 import static tigerui.Preconditions.checkState;
+import static tigerui.remote.ServiceLifecycleMonitor.State.STOPPED;
 
 import java.util.Map.Entry;
 import java.util.Objects;
@@ -26,21 +27,21 @@ import java.util.stream.Collectors;
 import com.hazelcast.core.HazelcastException;
 import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.core.IMap;
-import com.hazelcast.core.LifecycleEvent.LifecycleState;
-import com.hazelcast.core.LifecycleService;
 import com.hazelcast.map.AbstractEntryProcessor;
 import com.hazelcast.map.listener.EntryUpdatedListener;
 
 import rx.Single;
 import rx.subjects.AsyncSubject;
 import tigerui.Subscriber;
+import tigerui.remote.HazelcastServiceLifecycleMonitor;
+import tigerui.remote.ServiceLifecycleMonitor.State;
 import tigerui.subscription.CompositeSubscription;
 
 /**
  * A property service that is backed by Hazelcast.
  * 
- * TODO: what about locking and checked exceptions. Right now Hazelcast throws
- * instances of {@link HazelcastException} which are not checked exceptions.
+ * TODO: What about checked exceptions. Right now Hazelcast throws instances of
+ * {@link HazelcastException} which are not checked exceptions.
  */
 public class HazelcastPropertyService implements PropertyService {
 
@@ -48,14 +49,14 @@ public class HazelcastPropertyService implements PropertyService {
     
     private final IMap<String, Object> propertyMap;
     private final CompositeSubscription subscriptions;
-    
-    private volatile boolean isRunning;
+    private final HazelcastServiceLifecycleMonitor lifecycleMonitor;
 
     public HazelcastPropertyService(HazelcastInstance hazelcast) {
         this.propertyMap = requireNonNull(hazelcast.getMap(PROPERTY_SERVICE_MAP_NAME));
-        isRunning = hazelcast.getLifecycleService().isRunning();
-        subscriptions = new CompositeSubscription();
-        addLifecycleListener(hazelcast);
+        this.lifecycleMonitor = new HazelcastServiceLifecycleMonitor(hazelcast);
+        this.subscriptions = new CompositeSubscription();
+
+        lifecycleMonitor.getState().is(STOPPED).then(subscriptions::dispose);
     }
 
     @Override
@@ -189,21 +190,10 @@ public class HazelcastPropertyService implements PropertyService {
     }
 
     private void checkHazelcastIsRunning() {
-        checkState(isRunning, "Hazelcast is not running");
+        checkState(lifecycleMonitor.isRunning(), "Hazelcast is not running");
     }
     
     private <T> EntryUpdatedListener<String, T> createEntryUpdatedListener(Consumer<T> listener) {
         return event -> listener.accept(event.getValue());
-    }
-    
-    private void addLifecycleListener(HazelcastInstance hazelcast) {
-        LifecycleService lifecycleService = hazelcast.getLifecycleService();
-        
-        lifecycleService.addLifecycleListener(event -> {
-            if (event.getState() == LifecycleState.SHUTDOWN) {
-                isRunning = false;
-                subscriptions.dispose();
-            }
-        });
     }
 }

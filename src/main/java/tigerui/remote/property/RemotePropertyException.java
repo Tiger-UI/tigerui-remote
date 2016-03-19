@@ -1,4 +1,4 @@
-package tigerui.remote;
+package tigerui.remote.property;
 
 /**
  * Exceptions that can be thrown when interacting with remote properties.

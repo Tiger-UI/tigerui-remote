@@ -24,8 +24,8 @@ import com.hazelcast.core.HazelcastInstance;
 
 import rx.Observable;
 import rx.schedulers.Schedulers;
-import tigerui.remote.HazelcastPropertyService;
-import tigerui.remote.PropertyService;
+import tigerui.remote.property.HazelcastPropertyService;
+import tigerui.remote.property.PropertyService;
 
 public class PropertyServer {
     public static void main(String[] args) {
