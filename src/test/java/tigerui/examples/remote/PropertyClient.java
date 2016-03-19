@@ -20,9 +20,9 @@ import javax.swing.SwingUtilities;
 import com.hazelcast.core.Hazelcast;
 import com.hazelcast.core.HazelcastInstance;
 
-import tigerui.remote.HazelcastPropertyService;
-import tigerui.remote.PropertyService;
-import tigerui.remote.RemoteProperty;
+import tigerui.remote.property.HazelcastPropertyService;
+import tigerui.remote.property.PropertyService;
+import tigerui.remote.property.RemoteProperty;
 
 public class PropertyClient {
     public static void main(String[] args) {

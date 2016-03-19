@@ -3,6 +3,9 @@ apply plugin: 'eclipse'
 
 repositories {
     jcenter()
+    maven {
+      url "https://oss.sonatype.org/content/groups/public"
+  }
 }
 
 task sourcesJar(type: Jar, dependsOn: classes) {
@@ -22,7 +25,7 @@ artifacts {
 
 dependencies {
     compile 'com.hazelcast:hazelcast:3.6.1'
-    compile 'io.tigerui:tigerui-core:0.7.6'
+    compile 'io.tigerui:tigerui-core:0.7.7'
 
     testCompile 'junit:junit:4.12'
     testCompile 'org.mockito:mockito-core:2.0.31-beta'

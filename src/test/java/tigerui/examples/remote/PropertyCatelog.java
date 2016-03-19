@@ -13,7 +13,7 @@
  */
 package tigerui.examples.remote;
 
-import tigerui.remote.PropertyId;
+import tigerui.remote.property.PropertyId;
 
 public class PropertyCatelog {
     public static final PropertyId<String> TEST_ID = new PropertyId<String>("819ad114-ced8-454f-91dd-798aee5fb3cb");
