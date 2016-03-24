@@ -27,23 +27,27 @@ import tigerui.subscription.Subscription;
  */
 public interface PropertyService {
     
-    /**
-     * Gets the current value of the remote property with provided id.
-     * 
-     * @param id
-     *            some id of a remote property
-     * @return the current value of this remote property.
-     */
+	/**
+	 * Gets the current value of the remote property with provided id.
+	 * 
+	 * @param id
+	 *            some id of a remote property
+	 * @return the current value of this remote property.
+	 * @param <T>
+	 *            the type of the property
+	 */
     <T> T getValue(PropertyId<T> id);
-    
-    /**
-     * Sets the value of a property in the remote
-     * 
-     * @param id
-     *            some id of a remote property
-     * @param value
-     *            the value to set for the remote property
-     */
+
+	/**
+	 * Sets the value of a property in the remote
+	 * 
+	 * @param id
+	 *            some id of a remote property
+	 * @param value
+	 *            the value to set for the remote property
+	 * @param <T>
+	 *            the type of the property
+	 */
     <T> void setValue(PropertyId<T> id, T value);
     
 	/**
@@ -54,6 +58,9 @@ public interface PropertyService {
 	 *            some id of a remote property
 	 * @param value
 	 *            the value to set for the remote property
+	 * @return the existing remote value of the property when replaced
+	 * @param <T>
+	 *            the type of the property
 	 */
     <T> T replaceValue(PropertyId<T> id, T value);
     
@@ -70,14 +77,21 @@ public interface PropertyService {
 	 *            the expected value of the remote property.
 	 * @return a {@link Single} that will be completed with an error
 	 *         or success when the set operation is finished
+	 * @param <T>
+	 *            the type of the property
 	 */
     <T> Single<Void> setValueAsync(PropertyId<T> id, T value, T expectedRemoteValue);
     
-    /**
-     * Registers the provided property in the remote.
-     * 
-     * @param property some property to register.
-     */
+	/**
+	 * Registers the provided property in the remote.
+	 * 
+	 * @param id
+	 *            the id of some property to register.
+	 * @param initialValue
+	 *            the initial value to register the property with
+	 * @param <T>
+	 *            the type of the property
+	 */
     <T> void registerProperty(PropertyId<T> id, T initialValue);
     
     /**
@@ -93,6 +107,8 @@ public interface PropertyService {
      * @param id
      *            some property id to check if it exists.
      * @return boolean true if the property exists, false otherwise
+	 * @param <T>
+	 *            the type of the property
      */
     <T> boolean hasProperty(PropertyId<T> id);
     
@@ -104,6 +120,8 @@ public interface PropertyService {
      * @param listener
      *            some listener to respond to value updates.
      * @return a {@link Subscription}
+	 * @param <T>
+	 *            the type of the property
      */
     <T> Subscriber registerListener(PropertyId<T> id, Consumer<T> listener);
     
@@ -114,6 +132,8 @@ public interface PropertyService {
      *            some property id to listen on.
      * @return a {@link RemoteProperty} that is connected to a remote property
      *         with the provided id.
+	 * @param <T>
+	 *            the type of the property
      */
     <T> RemoteProperty<T> getProperty(PropertyId<T> id);
 

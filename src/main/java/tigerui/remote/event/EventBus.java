@@ -16,6 +16,9 @@ public interface EventBus {
 	 *            the id of the topic to publish the message on.
 	 * @param message
 	 *            some message to publish on the provided topic.
+	 * @param <T>
+	 *            the type of the messages to that can be published on the
+	 *            topic.
 	 */
 	public <T> void publish(TopicId<T> id, T message);
 
@@ -24,8 +27,13 @@ public interface EventBus {
 	 * 
 	 * @param id
 	 *            some topic to subscribe to.
-	 * @return a {@link Subscriber} that can be used to stop consuming messages on the
-	 *         provided topic.
+	 * @param messageConsumer
+	 *            some consumer to handle messages on the provided topic
+	 * @return a {@link Subscriber} that can be used to stop consuming messages
+	 *         on the provided topic.
+	 * @param <T>
+	 *            the type of the messages to that can be published on the
+	 *            topic.
 	 */
     public <T> Subscriber subscribe(TopicId<T> id, Consumer<T> messageConsumer);
 }

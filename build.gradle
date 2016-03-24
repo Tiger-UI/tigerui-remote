@@ -1,11 +1,14 @@
 apply plugin: 'java'
 apply plugin: 'eclipse'
+apply plugin: 'maven'
+apply plugin: 'signing'
+
+group = 'io.tigerui'
+archivesBaseName = "tigerui-remote"
+version = '0.4.0'
 
 repositories {
     jcenter()
-    maven {
-      url "https://oss.sonatype.org/content/groups/public"
-  }
 }
 
 task sourcesJar(type: Jar, dependsOn: classes) {
@@ -19,8 +22,12 @@ task javadocJar(type: Jar, dependsOn: javadoc) {
 }
 
 artifacts {
-    archives sourcesJar
-    archives javadocJar
+    archives javadocJar, sourcesJar
+}
+
+signing {
+    required { gradle.taskGraph.hasTask("uploadArchives") }
+    sign configurations.archives
 }
 
 dependencies {
@@ -29,4 +36,52 @@ dependencies {
 
     testCompile 'junit:junit:4.12'
     testCompile 'org.mockito:mockito-core:2.0.31-beta'
+}
+
+def nexusUrl = hasProperty('ossrUrl')?ossrUrl:''
+def nexusUsername = hasProperty('ossrUsername')?ossrUsername:''
+def nexusPassword = hasProperty('ossrPassword')?ossrPassword:''
+
+uploadArchives {
+  repositories {
+    mavenDeployer {
+      beforeDeployment { MavenDeployment deployment -> signing.signPom(deployment) }
+      
+      repository(url: "${nexusUrl}/service/local/staging/deploy/maven2/") {
+        authentication(userName: nexusUsername, password: nexusPassword)
+      }
+    
+      snapshotRepository(url: "${nexusUrl}/content/repositories/snapshots/") {
+        authentication(userName: nexusUsername, password: nexusPassword)
+      }
+      
+      pom.project {
+        name 'tigerui-remote'
+        packaging 'jar'
+        description 'A toolkit for connecting property and event streams across remote JVMs'
+        url 'https://github.com/Tiger-UI/tigerui-remote'
+
+        scm {
+          url 'https://github.com/Tiger-UI/tigerui-remote'
+          connection 'scm:https://mikebaum@github.com/Tiger-UI/tigerui-remote.git'
+          developerConnection 'scm:git://github.com/Tiger-UI/tigerui-remote.git'
+        }
+
+        licenses {
+          license {
+            name 'The Apache License, Version 2.0'
+            url 'http://www.apache.org/licenses/LICENSE-2.0.txt'
+          }
+        }
+
+        developers {
+          developer {
+            id 'mbaum'
+            name 'Mike Baum'
+            email 'michael.baum@gmail.com'
+          }
+        }
+      }
+    }
+  }
 }
