@@ -34,7 +34,6 @@ import rx.Single;
 import rx.subjects.AsyncSubject;
 import tigerui.Subscriber;
 import tigerui.remote.HazelcastServiceLifecycleMonitor;
-import tigerui.remote.ServiceLifecycleMonitor.State;
 import tigerui.subscription.CompositeSubscription;
 
 /**

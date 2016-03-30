@@ -5,7 +5,7 @@ apply plugin: 'signing'
 
 group = 'io.tigerui'
 archivesBaseName = "tigerui-remote"
-version = '0.4.0'
+version = '0.4.1'
 
 repositories {
     jcenter()
@@ -32,7 +32,7 @@ signing {
 
 dependencies {
     compile 'com.hazelcast:hazelcast:3.6.1'
-    compile 'io.tigerui:tigerui-core:0.7.7'
+    compile 'io.tigerui:tigerui-core:0.7.8'
 
     testCompile 'junit:junit:4.12'
     testCompile 'org.mockito:mockito-core:2.0.31-beta'
