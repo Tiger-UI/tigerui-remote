@@ -1,11 +1,11 @@
-package tigerui.remote.property;
+package tigerui.remote.event;
 
 import java.util.Optional;
 
 /**
  * A property catalog holds a list of all the properties that are available from some property service.
  */
-public interface PropertyCatalog {
+public interface TopicCatalog {
 	
 	/**
 	 * Retrieves a property id for a given property uuid.
@@ -17,5 +17,5 @@ public interface PropertyCatalog {
 	 *         defined property id.
 	 * @param <T> the type of the property id
 	 */
-	Optional<PropertyId<?>> getPropertyId(String uuid);
+	Optional<TopicId<?>> getTopicId(String uuid);
 }
